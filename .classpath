@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>
 	<classpathentry kind="src" path="src/test/java"/>
+	<classpathentry kind="src" path="src/main/java"/>
 	<classpathentry kind="lib" path="lib/ant-junit4-1.8.4.jar"/>
 	<classpathentry kind="lib" path="lib/assertj-core-1.6.1.jar"/>
 	<classpathentry kind="lib" path="lib/CreditCheckAPI-1.0.0.jar"/>
