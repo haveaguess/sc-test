@@ -1,0 +1,150 @@
+<project name="Trading" default="complete" basedir=".">
+    <description>Trading project to test MarketAPI</description>
+    <!-- set global properties for this build -->
+    <property name="src.dir" location="src/main/java"/>
+    <property name="test.dir" location="src/test/java"/>
+    <property name="src.resource.dir" location="src/main/resources"/>
+    <property name="test.resource.dir" location="src/test/resources"/>
+    <property name="build.dir" location="target"/>
+    <property name="test.output.dir" location="${build.dir}/test-classes"/>
+    <property name="test.result.dir" location="${build.dir}/test-results"/>
+    <property name="unittest.result.dir" location="${test.result.dir}/unittest"/>
+    <property name="bddtest.result.dir" location="${test.result.dir}/bddtest"/>
+    <property name="source.output.dir" location="${build.dir}/classes"/>
+    <property name="dist.dir"  location="${build.dir}/dist"/>
+    <property name="project.artifact"  value="Trading"/>
+    <property name="project.version"  value="0.0.1"/>
+    <property name="source.jdk.version"  value="1.6"/>
+    <property name="target.jdk.version"  value="1.6"/>
+    <property name="source.encoding"  value="utf-8"/>
+    <property name="debug"  value="false"/>
+    <property name="lib"  value="lib"/>
+
+
+    <path id="project.compile.path">
+        <fileset dir="${lib}" includes="*.jar"/>
+    </path>
+
+    <path id="project.test-compile.path">
+        <fileset dir="${lib}" includes="*.jar"/>
+        <pathelement path="${source.output.dir}" />
+    </path>
+
+    <path id="project.test-run.path">
+        <fileset dir="${lib}" includes="*.jar"/>
+        <pathelement path="${source.output.dir}" />
+        <pathelement path="${test.output.dir}" />
+    </path>
+
+    <target name="init" description="initialize build folders">
+        <!-- Create the time stamp -->
+        <tstamp/>
+        <!-- Create the build directory structure used by compile -->
+        <mkdir dir="${build.dir}"/>
+        <mkdir dir="${source.output.dir}"/>
+        <mkdir dir="${test.output.dir}"/>
+        <mkdir dir="${test.result.dir}"/>
+        <mkdir dir="${dist.dir}"/>
+    </target>
+
+    <target name="compile" depends="init"
+            description="compile the source " >
+
+        <!-- copy resources -->
+        <copy todir="${source.output.dir}">
+            <fileset dir="${src.resource.dir}">
+                <include name="**/*.xml" />
+                <include name="**/*.properties" />
+            </fileset>
+        </copy>
+        <!-- Compile the java code from ${src} into ${build} -->
+
+        <javac includeantruntime="false" srcdir="${src.dir}"
+               destdir="${source.output.dir}"
+               source="${source.jdk.version}"
+               target="${target.jdk.version}"
+               encoding="${source.encoding}"
+                debug="${debug}">
+            <classpath refid="project.compile.path" />
+
+        </javac>
+    </target>
+
+    <target name="package" depends="compile"
+            description="compile the source " >
+        <!-- Create the distribution directory -->
+
+        <jar jarfile="${dist.dir}/${project.artifact}-${project.version}.jar" basedir="${build.dir}/classes" >
+            <manifest>
+                <attribute name="Specification-Version" value="${project.version}"/>
+                <attribute name="Specification-Vendor" value="SCB GMR Team"/>
+            </manifest>
+        </jar>
+    </target>
+
+    <target name="complete" depends="package,alltest"
+            description="compile,package,test and everything" >
+        <!-- Create the distribution directory -->
+        <echo message="package and test complete" />
+    </target>
+
+    <target name="compile_test" depends="compile"
+            description="compile the test source " >
+        <!-- Compile the java code from ${src} into ${build} -->
+        <javac includeantruntime="false" srcdir="${test.dir}" destdir="${test.output.dir}">
+            <classpath  refid="project.test-compile.path" />
+        </javac>
+    </target>
+
+    <target name="unittest" depends="compile_test"
+            description="run unit test suites" >
+        <delete dir="${unittest.result.dir}"/>
+        <mkdir dir="${unittest.result.dir}"/>
+        <junit includeantruntime="false" fork="false" haltonfailure="yes"
+               showoutput="yes"
+               errorProperty="test.failed"
+               failureProperty="test.failed">
+
+            <formatter type="plain" usefile="false" />
+            <formatter type="xml"/>
+            <classpath  refid="project.test-run.path" />
+            <batchtest todir="${test.result.dir}">
+                <fileset dir="${test.output.dir}" >
+                    <exclude name="**/*$*.class"/>
+                    <exclude name="**/*Definitions.class"/>
+                    <exclude name="**/*BDDTest.class"/>
+                </fileset>
+
+            </batchtest>
+        </junit>
+    </target>
+
+    <target name="bddtest" depends="compile_test"
+            description="run bdd test suites" >
+        <delete dir="${bddtest.result.dir}"/>
+        <mkdir dir="${bddtest.result.dir}"/>
+        <junit includeantruntime="false" fork="false" haltonfailure="yes"
+               showoutput="yes"
+               errorProperty="test.failed"
+               failureProperty="test.failed">
+
+            <formatter type="plain" usefile="false" />
+            <formatter type="xml"/>
+            <classpath  refid="project.test-run.path" />
+            <batchtest todir="${test.result.dir}">
+                <fileset dir="${test.output.dir}" >
+                    <include name="**/*BDDTest.class" />
+                </fileset>
+            </batchtest>
+        </junit>
+    </target>
+
+    <target name="alltest" depends="unittest,bddtest" description="run all test suites" >
+        <echo message="run all the tests" />
+    </target>
+
+
+    <target name="clean" description="clean up" >
+        <delete dir="${build.dir}"/>
+    </target>
+</project>
