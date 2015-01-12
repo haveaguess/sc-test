@@ -45,3 +45,25 @@ Since we are setting daily limits when is the day over ?
 Can't really fire Finish unless we have definitely used up ALL the daily limit, otherwise there may be a trade that could arrive that could use the last little bit. or just when used up for all counterparties?
 
 Need to raise error for daily limits ? 
+
+------
+
+the Test is broken because it expects daily limits to be utilised up to 501  even if trade cant go ahead because its over preauth trading limit of 500!
+
+Scenario Outline: Validate Limits
+Given a counterParty Ford
+And  pre authorised trading limit of 500
+And a daily trading limit of 1000
+When I place the order for <counterParty> with a <tradeValue>
+Then the utilised daily limit should be <utilisedDailyLimit>
+Examples:
+  | counterParty | tradeValue | utilisedDailyLimit |
+  | Ford         | 501        |      501     |
+  
+  
+  
+  
+ANSWER: 
+
+I assumed that we were supposed to assume the trade doesnt execute if above limits but this is not the case as the example above shows .. 
+

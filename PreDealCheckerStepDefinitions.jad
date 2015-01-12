@@ -1,0 +1,113 @@
+// Decompiled by Jad v1.5.8g. Copyright 2001 Pavel Kouznetsov.
+// Jad home page: http://www.kpdus.com/jad.html
+// Decompiler options: packimports(3) 
+
+package com.scb.gmr.bdd;
+
+import CreditCheckAPI.CreditCheckException;
+import CreditCheckAPI.CreditLimitBreach;
+import com.scb.gmr.PreDealCheckerImpl;
+import java.io.PrintStream;
+import java.util.HashMap;
+import java.util.Map;
+import org.junit.Assert;
+
+public class PreDealCheckerStepDefinitions
+{
+
+    public PreDealCheckerStepDefinitions()
+    {
+        counterPartyTradeLimits = new HashMap();
+        counterPartyDailyLimits = new HashMap();
+        creditCheck = new CreditLimitBreach() {
+
+            public void validate(String s, double d)
+                throws CreditCheckException
+            {
+            }
+
+            final PreDealCheckerStepDefinitions this$0;
+
+            
+            {
+                this$0 = PreDealCheckerStepDefinitions.this;
+                super();
+            }
+        }
+;
+        startTime = System.currentTimeMillis();
+        System.out.println("Constructed PreDealCheckerStepDefinitions");
+    }
+
+    public void given_A_Counterparty(String s)
+        throws Throwable
+    {
+        testCounterParty = s;
+    }
+
+    public void and_A_PreAuthorised_Trading_Limit_Of(int i)
+        throws Throwable
+    {
+        counterPartyTradeLimits.put(testCounterParty, Integer.valueOf(i));
+    }
+
+    public void and_A_Daily_Trading_Limit_Of(int i)
+        throws Throwable
+    {
+        counterPartyDailyLimits.put(testCounterParty, Integer.valueOf(i));
+    }
+
+    private PreDealCheckerImpl createPreDealChecker()
+        throws CreditCheckException
+    {
+        if(dealListener == null)
+            dealListener = new PreDealCheckerImpl(creditCheck, counterPartyTradeLimits, counterPartyDailyLimits);
+        return dealListener;
+    }
+
+    public void when_I_Place_the_Following_Order(String s, int i)
+        throws Throwable
+    {
+        createPreDealChecker().handle(s, i);
+    }
+
+    public void when_I_Execute_the_Following_Order(int i, String s, int j)
+        throws Throwable
+    {
+        int k = 0;
+        startTime = System.currentTimeMillis();
+        for(; k < i; k++)
+            createPreDealChecker().handle(s, j);
+
+    }
+
+    public void then_I_have_shared_at_hand(boolean flag)
+        throws Throwable
+    {
+        Assert.assertTrue("Deal executed ok", createPreDealChecker().isLastTradeHasError());
+        Assert.assertEquals("Deal executed amount", Boolean.valueOf(flag), Integer.valueOf(createPreDealChecker().getLastTradeAmount()));
+    }
+
+    public void and_The_Utilised_Daily_Limit_Should_Be(int i)
+        throws Throwable
+    {
+        int j = ((Integer)createPreDealChecker().getCounterPartyDailyUsed().get(testCounterParty)).intValue();
+        System.out.println((new StringBuilder()).append("amountUsedToday: ").append(j).toString());
+        Assert.assertEquals("Daily limit used", i, j);
+    }
+
+    public void then_I_Should_Finish_Within(int i)
+        throws Throwable
+    {
+        long l = System.currentTimeMillis() - startTime;
+        System.out.println((new StringBuilder()).append("runTime(ms): ").append(l).toString());
+        Assert.assertTrue("executed fast enough", l / 1000L < (long)i);
+    }
+
+    private PreDealCheckerImpl dealListener;
+    private String testCounterParty;
+    Map counterPartyTradeLimits;
+    Map counterPartyDailyLimits;
+    private CreditLimitBreach creditCheck;
+    long startTime;
+}

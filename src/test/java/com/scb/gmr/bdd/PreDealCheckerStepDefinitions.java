@@ -16,13 +16,26 @@ import cucumber.api.java.en.Then;
 import cucumber.api.java.en.When;
 
 public class PreDealCheckerStepDefinitions {
+    private long startTime = System.currentTimeMillis();
 
-	private PreDealCheckerImpl dealListener ;
+	private static PreDealCheckerImpl dealListener ;
 	private String testCounterParty;
-	private int testLimit;
-	private int dailyLimit;
-	Map<String, Integer> counterPartyDailyLimits ;
 	
+	private static Map<String, Integer> counterPartyTradeLimits = new HashMap<String, Integer>();
+	private static Map<String, Integer> counterPartyDailyLimits = new HashMap<String, Integer>();
+
+	public PreDealCheckerStepDefinitions() {
+		System.out.println("Constructed PreDealCheckerStepDefinitions");
+	}
+	
+	// stub out the legacy credit check as it was causing DB failures in test
+	private static CreditLimitBreach creditCheck = new CreditLimitBreach() {
+		@Override
+		public void validate(String arg0, double arg1) throws CreditCheckException {
+		}
+	};
+	
+	// Bit dodgy, but ok as tests are run serially... TODO:Find better way
     @Given("^a counterParty (.*)$")
     public void given_A_Counterparty(String counterParty) throws Throwable {
     	this.testCounterParty = counterParty;
@@ -30,45 +43,27 @@ public class PreDealCheckerStepDefinitions {
 
     @And("^pre authorised trading limit of (.*)$")
     public void and_A_PreAuthorised_Trading_Limit_Of(int preAuthorised) throws Throwable {
-    	this.testLimit = preAuthorised;
+    	counterPartyTradeLimits.put(testCounterParty,  preAuthorised);
     }
 
     @And("^a daily trading limit of (.*)$")
     public void and_A_Daily_Trading_Limit_Of(int dailyLimit) throws Throwable {
-    	this.dailyLimit = dailyLimit;
-    	CreatePreDealChecker();
-    }
-
-    private Map<String, Integer> createLimitMap(String testCounterParty, int testLimit) {
-    	Map<String, Integer> counterPartyLimits = new HashMap<String, Integer>();
-    	System.out.println("adding "+testCounterParty+", "+testLimit);
-    	counterPartyLimits.put(testCounterParty, testLimit);
-    	return counterPartyLimits;
+    	counterPartyDailyLimits.put(testCounterParty,  dailyLimit);
     }
     
-    private void CreatePreDealChecker() throws CreditCheckException {
-    	
-    	// stub out the legacy credit check as it was causing DB failures in test
-    	CreditLimitBreach creditCheck = new CreditLimitBreach() {
-			@Override
-			public void validate(String arg0, double arg1) throws CreditCheckException {
-				// TODO Auto-generated method stub
-			}
-		};
+    private synchronized PreDealCheckerImpl createPreDealChecker() throws CreditCheckException {
+		if (dealListener == null) {
+			dealListener = new PreDealCheckerImpl(creditCheck, counterPartyTradeLimits, counterPartyDailyLimits);
+		} 
 		
-		Map<String, Integer> counterPartyTradeLimits = createLimitMap(testCounterParty, testLimit);
-		Map<String, Integer> counterPartyDailyLimits = createLimitMap(testCounterParty, dailyLimit);
-		
-    	dealListener = new PreDealCheckerImpl(creditCheck, counterPartyTradeLimits, counterPartyDailyLimits);
+		return dealListener;
     }
 
     @When("^I place the order for (.*) with a (.*)$")
     public void when_I_Place_the_Following_Order(String counterParty, int notional) throws Throwable {
-    	dealListener.handle(counterParty, notional);
+    	createPreDealChecker().handle(counterParty, notional);
     }
-
-    long startTime = System.currentTimeMillis();
-    
+  
     @When("^I execute (.*) for (.*) with a (.*)$")
     public void when_I_Execute_the_Following_Order(int numberOfExecutions, final String counterParty, final int notional) throws Throwable {
     	int executionCount = 0;
@@ -76,7 +71,7 @@ public class PreDealCheckerStepDefinitions {
     	startTime = System.currentTimeMillis();
 	
     	while (executionCount < numberOfExecutions) {
-        	dealListener.handle(counterParty, notional);
+    		createPreDealChecker().handle(counterParty, notional);
         	executionCount++;
 //        	System.out.println(executionCount);
     	}
@@ -85,14 +80,15 @@ public class PreDealCheckerStepDefinitions {
 
     @Then("^the trade should be successfully (.*)$")
     public void then_I_have_shared_at_hand(boolean expectedValue) throws Throwable {
-    	Assert.assertTrue("Deal executed ok", dealListener.isFinishedWithoutError());   	
-    	Assert.assertEquals("Deal executed amount", expectedValue, dealListener.getLastTrade());   	
+    	Assert.assertTrue("Deal executed ok", createPreDealChecker().isLastTradeHasError());   	
+    	Assert.assertEquals("Deal executed amount", expectedValue, createPreDealChecker().getLastTradeAmount());   	
     }
 
     @And("^the utilised daily limit should be (.*)$")
     public void and_The_Utilised_Daily_Limit_Should_Be(int utilisedDailyLimit) throws Throwable {
-    	int amountRemainingToday = dealListener.getCounterPartyDailyRemaining().get(testCounterParty);
-    	Assert.assertEquals("Daily limit used", utilisedDailyLimit, dailyLimit - amountRemainingToday);
+    	int amountUsedToday = createPreDealChecker().getCounterPartyDailyUsed().get(testCounterParty);
+    	System.out.println("amountUsedToday: "+ amountUsedToday);
+    	Assert.assertEquals("Daily limit used", utilisedDailyLimit, amountUsedToday);
     }
 
     @Then("^I should finish within (.*)$")
