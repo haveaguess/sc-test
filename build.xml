@@ -17,7 +17,7 @@
     <property name="source.jdk.version"  value="1.6"/>
     <property name="target.jdk.version"  value="1.6"/>
     <property name="source.encoding"  value="utf-8"/>
-    <property name="debug"  value="false"/>
+    <property name="debug"  value="true"/>
     <property name="lib"  value="lib"/>
 
 
