@@ -60,7 +60,7 @@ public class PreDealCheckerStepDefinitions {
     	counterPartyDailyLimits.put(testCounterParty,  dailyLimit);
     }
     
-    private synchronized PreDealCheckerImpl createPreDealChecker() throws CreditCheckException {
+    private PreDealCheckerImpl createPreDealChecker() throws CreditCheckException {
 		if (dealListener == null) {
 			dealListener = new PreDealCheckerImpl(eventBus, creditCheck, counterPartyTradeLimits, counterPartyDailyLimits);
 		} 
