@@ -109,11 +109,12 @@ public class PreDealCheckerImpl implements PreDealListener {
 	}
 	
 	private boolean checkForDailyLimitExhaustion() {
-		// finished if all daily limits used up
+		// finished if all daily limits are used up
 		boolean finished = true;
-		for (String counterparty : counterPartyDailyUsed.keySet()) {
-			int used = counterPartyDailyUsed.get(counterparty);
+		for (String counterparty : counterPartyDailyLimits.keySet()) {
 			int limit = counterPartyDailyLimits.get(counterparty);
+			Integer used = counterPartyDailyUsed.get(counterparty);
+			if (used == null) used = 0;
 			
 			finished &= limit - used == 0;
 		}
