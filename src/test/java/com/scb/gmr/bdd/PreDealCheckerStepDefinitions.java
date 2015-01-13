@@ -19,7 +19,6 @@ import cucumber.api.java.en.When;
 public class PreDealCheckerStepDefinitions {
     private long startTime = System.currentTimeMillis();
 
-	private static PreDealCheckerImpl dealListener ;
 	private String testCounterParty;
 	
 	private static Map<String, Integer> counterPartyTradeLimits = new HashMap<String, Integer>();
@@ -37,12 +36,16 @@ public class PreDealCheckerStepDefinitions {
 	};
 	
 	// stub out an event bus
-	private final EventBus eventBus = new EventBus() {
+	private static EventBus eventBus = new EventBus() {
 		@Override
 		public void fire(String type, String reason) {
 //			System.out.println("EVENT FIRING:"+ type +":reason="+reason);
 		}
 	};
+	
+	// our deal checker under test
+	private static PreDealCheckerImpl dealChecker  = new PreDealCheckerImpl(eventBus, creditCheck, counterPartyTradeLimits, counterPartyDailyLimits);
+
 
 	// Bit dodgy, but ok as tests are run serially... TODO:Find better way
     @Given("^a counterParty (.*)$")
@@ -60,17 +63,9 @@ public class PreDealCheckerStepDefinitions {
     	counterPartyDailyLimits.put(testCounterParty,  dailyLimit);
     }
     
-    private PreDealCheckerImpl createPreDealChecker() throws CreditCheckException {
-		if (dealListener == null) {
-			dealListener = new PreDealCheckerImpl(eventBus, creditCheck, counterPartyTradeLimits, counterPartyDailyLimits);
-		} 
-		
-		return dealListener;
-    }
-
     @When("^I place the order for (.*) with a (.*)$")
     public void when_I_Place_the_Following_Order(String counterParty, int notional) throws Throwable {
-    	createPreDealChecker().handle(counterParty, notional);
+    	dealChecker.handle(counterParty, notional);
     }
   
     @When("^I execute (.*) for (.*) with a (.*)$")
@@ -80,7 +75,7 @@ public class PreDealCheckerStepDefinitions {
     	startTime = System.currentTimeMillis();
 	
     	while (executionCount < numberOfExecutions) {
-    		createPreDealChecker().handle(counterParty, notional);
+    		dealChecker.handle(counterParty, notional);
         	executionCount++;
 //        	System.out.println(executionCount);
     	}
@@ -89,13 +84,13 @@ public class PreDealCheckerStepDefinitions {
 
     @Then("^the trade should be successfully (.*)$")
     public void then_I_have_shared_at_hand(boolean expectedValue) throws Throwable {
-    	Assert.assertTrue("Deal executed ok", createPreDealChecker().isLastTradeHasError());   	
-    	Assert.assertEquals("Deal executed amount", expectedValue, createPreDealChecker().getLastTradeAmount());   	
+    	Assert.assertTrue("Deal executed ok", dealChecker.isLastTradeHasError());   	
+    	Assert.assertEquals("Deal executed amount", expectedValue, dealChecker.getLastTradeAmount());   	
     }
 
     @And("^the utilised daily limit should be (.*)$")
     public void and_The_Utilised_Daily_Limit_Should_Be(int utilisedDailyLimit) throws Throwable {
-    	int amountUsedToday = createPreDealChecker().getCounterPartyDailyUsed().get(testCounterParty);
+    	int amountUsedToday = dealChecker.getCounterPartyDailyUsed().get(testCounterParty);
     	System.out.println("amountUsedToday: "+ amountUsedToday);
     	Assert.assertEquals("Daily limit used", utilisedDailyLimit, amountUsedToday);
     }
