@@ -1,23 +1,45 @@
+General Assumptions
+===================
+ 
+Im assuming :
+
+ *  We are just concerned with unit tests
+ *  No need for a database interface (and hence fault tolerance/outages concerns)
+ *  No need to consider when end of day is or handling of resetting limits (perhaps server is just restarted!)
+ 
+ 
 Some questions
 ========================================
 
-Assumptions
-------------------------------
+>  *  Trades which are below the trading limit threshold don't need to be posted to the Legacy CreditCheck system
+>  *  Trades which are above the trading limit threshold will need to be posted against the Legacy CreditCheck system
+
+**It's not clear how we are expected to handle the boundary condition. ie. what if the trade doesnt bring total over or under the limit but exactly matches it ? Could disambiguate**  
 
 
- *  Trades which are below the trading limit threshold don't need to be posted to the Legacy CreditCheck system
- *  Trades which are above the trading limit threshold will need to be posted against the Legacy CreditCheck system
+> "Because the trading framework is asynchronous and multi threaded"
+
+**It's not clear if this method needs to be thread safe, for safety I could make it synchronized, and we could revisit if performance is bad. Im assuming thread-safety is not part of requirements **  
 
 
 
-**It's not clear how we are expected to handle the boundary condition. ie. what if the trade doesnt bring total over or under the limit but exactly matches it ? I assume this is not an exception **  
+DAILY LIMITS CONFUSION?!
+======
 
+It's occured to me that daily limits may not even be per - counterparty as I first read the spec : 
 
+> "..validate a given trade for a given counter party against given trading limits and daily limits." 
 
-Because the trading framework is asynchronous and multi threaded
+This long sentence actually has TWO possible interpretations (and assuming awareness of "pre-auth" concept hinted at in spec to relate to the legacy credit check system): 
 
-**It's not clear if this method needs to be thread safe, for safety I could make syncronized, and we could revisit if performance is bad. Im assuming thread-safety not part of requirements **  
+ *  Daily and pre-auth trading limits are per counterparty, for each trade
+ *  Pre-auth Trading limits are per counterparty, Daily limits are are a cap on total daily trading.
 
+I programmed it as the latter (harder!) but can readily rollback
+
+The test cases would pass either way from what I can tell by observation. Because they only test the unspecified limits for "Holden" but not for mixed counterparty/daily limits. They should be enlarged to cover more test cases to remove ambiguity.
+
+If we have different counterparties with different daily limits the only way we can fire "Finished" is if we use up all the daily limits in all the counterparties. If its just a global, again that's easier too..
 
 
 
@@ -38,32 +60,4 @@ So we will need to mock it out for tests.
 
 But Readme says "You can only use mocking on the PreDealListener Interface" so how can I mock out the bad connection to the database!?! Just using a stub implementation for now
 
-Should create a test for it's failure as well, or this informal failure is enough ? 
-
-Since we are setting daily limits when is the day over ? 
-
-Can't really fire Finish unless we have definitely used up ALL the daily limit, otherwise there may be a trade that could arrive that could use the last little bit. or just when used up for all counterparties?
-
-Need to raise error for daily limits ? 
-
-------
-
-the Test is broken because it expects daily limits to be utilised up to 501  even if trade cant go ahead because its over preauth trading limit of 500!
-
-Scenario Outline: Validate Limits
-Given a counterParty Ford
-And  pre authorised trading limit of 500
-And a daily trading limit of 1000
-When I place the order for <counterParty> with a <tradeValue>
-Then the utilised daily limit should be <utilisedDailyLimit>
-Examples:
-  | counterParty | tradeValue | utilisedDailyLimit |
-  | Ford         | 501        |      501     |
-  
-  
-  
-  
-ANSWER: 
-
-I assumed that we were supposed to assume the trade doesnt execute if above limits but this is not the case as the example above shows .. 
 
