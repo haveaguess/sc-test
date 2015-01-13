@@ -1,7 +1,6 @@
 package com.scb.gmr;
 
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.Map;
 
 import CreditCheckAPI.CreditCheckException;
@@ -16,6 +15,7 @@ public class PreDealCheckerImpl implements PreDealListener {
 	private static final boolean debug = false;
 
 	// constructor dependancies
+	private final EventBus eventBus;
 	private final CreditLimitBreach legacyCreditSystem;
 	private final Map<String, Integer> counterPartyTradeLimits;
 	private final Map<String, Integer> counterPartyDailyLimits;
@@ -34,18 +34,19 @@ public class PreDealCheckerImpl implements PreDealListener {
 	 * We can't construct without legacy system
 	 * @throws CreditCheckException when legacy systems fails 
 	 */
-	public PreDealCheckerImpl(CreditLimitBreach legacyCreditSystem,
+	public PreDealCheckerImpl(EventBus eventBus, CreditLimitBreach legacyCreditSystem,
 			Map<String, Integer> counterPartyTradeLimits,
 			Map<String, Integer> counterPartyDailyLimits) {
 		this.legacyCreditSystem  = legacyCreditSystem;
 		this.counterPartyTradeLimits = counterPartyTradeLimits; 	
-		this.counterPartyDailyLimits = counterPartyDailyLimits; 	
+		this.counterPartyDailyLimits = counterPartyDailyLimits; 
+		this.eventBus = eventBus;
 		if (debug) {
 			System.out.println("Constructed a PreDealCheckerImpl");
 		}
 	}
 	
-	private boolean validate(String counterparty, int amount) {
+	private boolean validateBasics(String counterparty, int amount) {
 		if (!counterPartyTradeLimits.containsKey(counterparty)) {
 			error("The counterparty has not been setup with preauth trading limits", counterparty, amount);
 			return false;
@@ -63,9 +64,7 @@ public class PreDealCheckerImpl implements PreDealListener {
 	 * @return whether to continue trading
 	 */
 	private boolean handleDaily(String counterparty, int amount) {
-		if (!validate(counterparty, amount)) {
-			return false;
-		}
+
 		
 		Integer dailyUsed = counterPartyDailyUsed.get(counterparty);
 		if (dailyUsed == null) {
@@ -109,6 +108,9 @@ public class PreDealCheckerImpl implements PreDealListener {
 	// before being disposed.
 	@Override
 	public void handle(String counterparty, int amount) {
+		if (!validateBasics(counterparty, amount)) {
+			return;
+		}
 		
 		/*
 		 * If can't even get inside daily limits then we're done 
@@ -141,7 +143,9 @@ public class PreDealCheckerImpl implements PreDealListener {
 
 	private void finish() {
 		// fire finish event?!?
-		lastTradeHadError = true;
+		eventBus.fire("FINISH", "all daily credit used up");
+
+		lastTradeHadError = false;
 	}
 	
 	private String createDetailsString( String counterparty, int amount) {
@@ -150,13 +154,18 @@ public class PreDealCheckerImpl implements PreDealListener {
 	
 	// "fire" error event for limit breach
 	private void error(String message, String counterparty, int amount) {
-		lastTradeHadError = false;
+		String details = createDetailsString(counterparty, amount);
+		String errorReason = message + ". Details: " + details;
+
+		eventBus.fire("ERROR", errorReason);
+		
 		if (debug) {
-			String details = createDetailsString(counterparty, amount);
-			System.out.println(message + ". " + details);
 			Thread.dumpStack();
+			System.out.println(errorReason);
 //			throw new RuntimeException(message + details);
 		}
+		
+		lastTradeHadError = true;
 	}
 	
 

@@ -8,6 +8,7 @@ import org.junit.Assert;
 import CreditCheckAPI.CreditCheckException;
 import CreditCheckAPI.CreditLimitBreach;
 
+import com.scb.gmr.EventBus;
 import com.scb.gmr.PreDealCheckerImpl;
 
 import cucumber.api.java.en.And;
@@ -35,6 +36,14 @@ public class PreDealCheckerStepDefinitions {
 		}
 	};
 	
+	// stub out an event bus
+	private final EventBus eventBus = new EventBus() {
+		@Override
+		public void fire(String type, String reason) {
+			System.out.println("EVENT FIRING:"+ type +":reason="+reason);
+		}
+	};
+
 	// Bit dodgy, but ok as tests are run serially... TODO:Find better way
     @Given("^a counterParty (.*)$")
     public void given_A_Counterparty(String counterParty) throws Throwable {
@@ -53,7 +62,7 @@ public class PreDealCheckerStepDefinitions {
     
     private synchronized PreDealCheckerImpl createPreDealChecker() throws CreditCheckException {
 		if (dealListener == null) {
-			dealListener = new PreDealCheckerImpl(creditCheck, counterPartyTradeLimits, counterPartyDailyLimits);
+			dealListener = new PreDealCheckerImpl(eventBus, creditCheck, counterPartyTradeLimits, counterPartyDailyLimits);
 		} 
 		
 		return dealListener;
