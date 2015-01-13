@@ -14,12 +14,13 @@ Some questions
 >  *  Trades which are below the trading limit threshold don't need to be posted to the Legacy CreditCheck system
 >  *  Trades which are above the trading limit threshold will need to be posted against the Legacy CreditCheck system
 
-**It's not clear how we are expected to handle the boundary condition. ie. what if the trade doesnt bring total over or under the limit but exactly matches it ? Could disambiguate**  
+It's not clear how we are expected to handle the boundary condition. ie. what if the trade doesnt bring total over or under the limit but exactly matches it ? Could disambiguate
 
 
 > "Because the trading framework is asynchronous and multi threaded"
 
-**It's not clear if this method needs to be thread safe, for safety I could make it synchronized, and we could revisit if performance is bad. Im assuming thread-safety is not part of requirements **  
+At this point I have just settled for a simple synchronization of the entire handle() method. Performance requirements were outlined and all test pass, however this may not reflect reality where there may be large contention for the lock. I'd ensure there is sufficiently large and diverse load put through it in profiling to ensure Im happy with lock contention.
+
 
 
 

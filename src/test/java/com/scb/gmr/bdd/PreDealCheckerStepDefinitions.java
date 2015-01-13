@@ -40,7 +40,7 @@ public class PreDealCheckerStepDefinitions {
 	private final EventBus eventBus = new EventBus() {
 		@Override
 		public void fire(String type, String reason) {
-			System.out.println("EVENT FIRING:"+ type +":reason="+reason);
+//			System.out.println("EVENT FIRING:"+ type +":reason="+reason);
 		}
 	};
 

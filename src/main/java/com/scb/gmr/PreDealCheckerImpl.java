@@ -107,7 +107,7 @@ public class PreDealCheckerImpl implements PreDealListener {
 	// after firing the Finished event;  might still receive some trades
 	// before being disposed.
 	@Override
-	public void handle(String counterparty, int amount) {
+	public synchronized void handle(String counterparty, int amount) {
 		if (!validateBasics(counterparty, amount)) {
 			return;
 		}
