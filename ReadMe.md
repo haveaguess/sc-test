@@ -1,5 +1,13 @@
-Contents
+Overview
 ===================
+
+Status
+---
+
+Default Ant goal executing completely with 100% success
+
+Original Documentation
+----
 
  *  [The Requirement](PreDealChecker_Requirement.md)
  *  [The Original ReadMe.md](ReadMe-original.md)
@@ -20,7 +28,7 @@ Some questions
 >  *  Trades which are below the trading limit threshold don't need to be posted to the Legacy CreditCheck system
 >  *  Trades which are above the trading limit threshold will need to be posted against the Legacy CreditCheck system
 
-It's not clear how we are expected to handle the boundary condition. ie. what if the trade doesnt bring total over or under the limit but exactly matches it ? Could disambiguate
+It's not clear how we are expected to handle the boundary condition. ie. what if the trade doesnt bring the total over or under the limit but exactly matches it ? Could disambiguate. Im assuming going up to the limit isnt interesting for daily or preauth limits, only breaching.
 
 
 > "Because the trading framework is asynchronous and multi threaded"

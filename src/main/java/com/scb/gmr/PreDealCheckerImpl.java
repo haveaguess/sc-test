@@ -47,6 +47,10 @@ public class PreDealCheckerImpl implements PreDealListener {
 	}
 	
 	private boolean validateBasics(String counterparty, int amount) {
+		if (checkForDailyLimitExhaustion()) {
+			return false;
+		}
+		
 		if (!counterPartyTradeLimits.containsKey(counterparty)) {
 			error("The counterparty has not been setup with preauth trading limits", counterparty, amount);
 			return false;
@@ -65,17 +69,16 @@ public class PreDealCheckerImpl implements PreDealListener {
 	 */
 	private boolean handleDaily(String counterparty, int amount) {
 
-		
 		Integer dailyUsed = counterPartyDailyUsed.get(counterparty);
 		if (dailyUsed == null) {
 			dailyUsed = 0;
 		}
 		int dailyRemaining = counterPartyDailyLimits.get(counterparty) - dailyUsed;
 		
-		// Partial trades cannot be executed however in order to satisfy the business
-		// we must utilise as much of the limit as possible.
+		// "Partial trades cannot be executed however in order to satisfy the business
+		// we must utilise as much of the limit as possible."
 //		
-		// any more trading allowed ? 
+		// any more trading allowed for this cparty? 
 		if (dailyRemaining == 0) {
 			return false;
 		}
@@ -96,12 +99,26 @@ public class PreDealCheckerImpl implements PreDealListener {
 		// update history 
 		lastTradeAmount = amount;
 		
-		if (amount == dailyRemaining) {
-			// Once the Daily Limit is reached, fire Finished
+		// Fire finished event if daily limits all used up
+		if (checkForDailyLimitExhaustion()) {
 			finish();
-		} 		
+		}
 		
+		// regardless finish processing this trade..
 		return true;
+	}
+	
+	private boolean checkForDailyLimitExhaustion() {
+		// finished if all daily limits used up
+		boolean finished = true;
+		for (String counterparty : counterPartyDailyUsed.keySet()) {
+			int used = counterPartyDailyUsed.get(counterparty);
+			int limit = counterPartyDailyLimits.get(counterparty);
+			
+			finished &= limit - used == 0;
+		}
+		 
+		return finished;
 	}
 	
 	// after firing the Finished event;  might still receive some trades
